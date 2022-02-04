@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import datetime
 
 from pydantic import BaseModel
 
@@ -6,8 +6,8 @@ from pydantic import BaseModel
 class PostBase(BaseModel):
     title: str
     content: str
-    created_at: date
-    updated_at: date
+    created_at: datetime
+    updated_at: datetime
 
 
 class Post(PostBase):
