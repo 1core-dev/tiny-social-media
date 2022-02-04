@@ -10,13 +10,13 @@ class UserCreate(BaseUser):
     password: str
 
 
-class  User(BaseUser):
+class User(BaseUser):
     id: int
 
     class Config:
         orm_mode = True
 
 
-class Token(BaseUser):
+class Token(BaseModel):
     access_token: str
     token_type: str = 'bearer'

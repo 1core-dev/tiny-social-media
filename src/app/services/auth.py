@@ -2,12 +2,21 @@ from datetime import datetime, timedelta
 
 from jose import JWTError, jwt
 from passlib.hash import bcrypt
-from fastapi import HTTPException, status
+from fastapi import HTTPException, status, Depends
+from fastapi.security import OAuth2PasswordBearer
 from pydantic import ValidationError
+from sqlalchemy.orm import Session
 
-from ..models.auth import User, Token
+from ..database import get_session
+from ..models.auth import User, Token, UserCreate
 from .. import tables
 from ..settings import settings
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl='/auth/sign-in')
+
+
+def get_current_user(token: str = Depends(oauth2_scheme)) -> User:
+    return AuthService.validate_token(token)
 
 
 class AuthService:
@@ -46,7 +55,7 @@ class AuthService:
     def create_token(cls, user: tables.User) -> Token:
         user_data = User.from_orm(user)
 
-        now = datetime.now()
+        now = datetime.utcnow()
 
         payload = {
             'iat': now,
@@ -62,3 +71,38 @@ class AuthService:
             algorithm=settings.jwt_algorithm
         )
         return Token(access_token=token)
+
+    def __init__(self, session: Session = Depends(get_session)):
+        self.session = session
+
+    def register_new_user(self, user_data: UserCreate) -> Token:
+        user = tables.User(
+            email=user_data.email,
+            username=user_data.username,
+            password_hash=self.hash_password(user_data.password)
+        )
+
+        self.session.add(user)
+        self.session.commit()
+
+        return self.create_token(user)
+
+    def authenticate_user(self, username: str, password: str) -> Token:
+        exeption = HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail='Incorrect username or password',
+            headers={'WWW-Authenticate': 'bearer'}
+        )
+        user = (
+            self.session
+                .query(tables.User)
+                .filter(tables.User.username == username)
+                .first()
+        )
+        if not user:
+            raise exeption
+
+        if not self.verify_password(password, user.password_hash):
+            raise exeption
+
+        return self.create_token(user)
