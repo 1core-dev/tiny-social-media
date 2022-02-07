@@ -7,7 +7,17 @@ from ..models.posts import Post, PostCreate, PostUpdate
 from ..services.auth import get_current_user
 from ..services.posts import PostsService
 
-router = APIRouter(prefix='/posts')
+router = APIRouter(
+    dependencies=[Depends(get_current_user)],
+    prefix='/posts',
+)
+
+
+@router.get('/latest', response_model=List[Post])
+def get_latest_posts(
+        service: PostsService = Depends(),
+):
+    return service.get_latest_posts()
 
 
 @router.get('/', response_model=List[Post])

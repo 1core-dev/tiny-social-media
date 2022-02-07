@@ -1,6 +1,7 @@
 from typing import List
 
 from fastapi import Depends, HTTPException, status
+from sqlalchemy import desc
 from sqlalchemy.orm import Session
 
 from .. import tables
@@ -57,3 +58,13 @@ class PostsService:
         post = self._get(user_id, post_id)
         self.session.delete(post)
         self.session.commit()
+
+    def get_latest_posts(self) -> List[tables.Post]:
+        posts = (
+            self.session
+                .query(tables.Post)
+                .order_by(desc('created_at'))
+                .limit(5))
+        if not posts:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+        return posts
